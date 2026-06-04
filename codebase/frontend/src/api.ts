@@ -129,6 +129,18 @@ export async function fetchMenuItems(options: FetchMenuItemsOptions = {}) {
   return response.json() as Promise<MenuResponse>;
 }
 
+export async function fetchMenuItem(itemId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/menu-items/${encodeURIComponent(itemId)}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to load menu item");
+  }
+
+  return response.json() as Promise<MenuItem>;
+}
+
 export async function fetchMenuItemImages(query?: string, limit = 20, offset = 0) {
   const params = new URLSearchParams({
     limit: String(limit),

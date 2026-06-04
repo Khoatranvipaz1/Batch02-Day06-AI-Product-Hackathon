@@ -57,4 +57,9 @@ Liệt kê một đến ba kiểu lỗi nguy hiểm nhất của sản phẩm. V
 
 ## 8. Phân công
 
-Cuối cùng, ghi rõ ai phụ trách phần nào — người viết và kiểm thử prompt, người dựng giao diện, người giữ repo, người viết kịch bản demo, và người lo phần bằng chứng. Mỗi thành viên cần có một phần đủ rõ để tự mình giải thích được khi demo.
+Nguyễn Phúc Hiếu - 2A202600747 : Code frontend, backend
+Lê Văn Khoa - 2A202600603 : Làm chatbot, tool chatbot.
+Nghiêm Tuấn Linh - 2A202600897 : Làm promt cho chatbot, backend
+Nguyễn Văn Duy - 2A202600725 : Làm promt cho chatbot, slide
+Lê Quang Hưng - 2A202600891 : Làm tool, chatbot
+Trần Văn Khoa - 2A202600827 : Làm slide, tối ưu luồng chatbot

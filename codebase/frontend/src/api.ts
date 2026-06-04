@@ -65,5 +65,15 @@ export async function sendChatMessage(message: string) {
     throw new Error("Failed to send chat message");
   }
 
-  return response.json() as Promise<{ reply: string }>;
+  return response.json() as Promise<ChatResponse>;
+}
+
+export async function getMenuSummary() {
+  const response = await fetch(`${API_BASE_URL}/api/menu/summary`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load menu summary");
+  }
+
+  return response.json() as Promise<{ items: number; shops: number; categories: number }>;
 }

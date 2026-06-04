@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
-import type { MenuItem, RecommendationItem } from "./api";
+import type { ChatHistoryMessage, MenuItem, RecommendationItem } from "./api";
 import "./styles.css";
 
 type CategoryTile = {
@@ -21,6 +21,35 @@ const fallbackCategoryImages = [
   "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=300&q=80",
   "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=300&q=80"
 ];
+
+type ChatMessage = {
+  id: string;
+  sender: "user" | "bot";
+  text: string;
+  timestamp: Date;
+  warnings?: string[];
+  recommendations?: RecommendationItem[];
+};
+
+function createGreetingMessage(): ChatMessage {
+  return {
+    id: "greeting",
+    sender: "bot",
+    text: "Xin chÃ o! MÃ¬nh lÃ  Trá»£ lÃ½ AI ShopeeFood. Báº¡n cáº§n mÃ¬nh gá»£i Ã½ mÃ³n Äƒn gÃ¬ hÃ´m nay? ðŸ˜‹\n\nVÃ­ dá»¥:\nâ€¢ 'TÃ¬m mÃ³n Äƒn trÆ°a dÆ°á»›i 50k khÃ´ng cay'\nâ€¢ 'Ä‚n gÃ¬ tá»‘t cho sá»©c khá»e'\nâ€¢ 'Gá»£i Ã½ mÃ³n gÃ  rÃ¡n giao nhanh dÆ°á»›i 30 phÃºt'",
+    timestamp: new Date()
+  };
+}
+
+function toChatHistory(messages: ChatMessage[]): ChatHistoryMessage[] {
+  return messages
+    .filter((message) => message.id !== "greeting")
+    .slice(-10)
+    .map((message) => ({
+      role: message.sender === "user" ? "user" : "assistant",
+      content: message.text,
+      recommendation_item_ids: message.recommendations?.map((item) => item.item_id) ?? []
+    }));
+}
 
 function formatPrice(value: number) {
   return `${priceFormatter.format(value)}d`;
@@ -71,11 +100,17 @@ export default function App() {
     }
   }, [chatMessages, isBotTyping, isChatOpen]);
 
+  const handleClearChat = () => {
+    setChatMessages([createGreetingMessage()]);
+    setChatInput("");
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isBotTyping) return;
 
     const userText = chatInput.trim();
+    const history = toChatHistory(chatMessages);
     setChatInput("");
 
     const userMsg = {
@@ -89,7 +124,7 @@ export default function App() {
     setIsBotTyping(true);
 
     try {
-      const response = await sendChatMessage(userText);
+      const response = await sendChatMessage(userText, history);
       const botMsg = {
         id: `bot-${Date.now()}`,
         sender: "bot" as const,
@@ -496,6 +531,16 @@ export default function App() {
           </div>
 
           <form className="chatbot-input-area" onSubmit={handleSendMessage}>
+            <button
+              className="chatbot-clear-btn"
+              type="button"
+              onClick={handleClearChat}
+              disabled={isBotTyping}
+              title="Clear chat history"
+              aria-label="Clear chat history"
+            >
+              Clear
+            </button>
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}

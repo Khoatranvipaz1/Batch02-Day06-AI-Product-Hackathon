@@ -166,6 +166,7 @@ def _build_items_query(
     _add_group_filter(where, params, filters, entities, relax)
     _add_include_tags(where, params, entities, relax)
     _add_exclude_tags(where, params, entities)
+    _add_exclude_item_ids(where, params, entities)
     _add_cuisines(where, params, entities)
     _add_dish_keywords(where, params, entities, relax)
     _add_allergen_exclusions(where, params, entities)
@@ -318,6 +319,20 @@ def _add_exclude_tags(
         )
         like_value = f"%{tag}%"
         params.extend([tag, like_value, like_value, like_value])
+
+
+def _add_exclude_item_ids(
+    where: list[str],
+    params: list[Any],
+    entities: dict[str, Any],
+) -> None:
+    item_ids = _as_list(entities.get("exclude_item_ids"))
+    if not item_ids:
+        return
+
+    placeholders = ",".join("?" for _ in item_ids)
+    where.append(f"v.item_id NOT IN ({placeholders})")
+    params.extend(item_ids)
 
 
 def _add_cuisines(

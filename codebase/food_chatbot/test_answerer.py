@@ -8,40 +8,51 @@ from .answerer import build_template_answer, generate_final_answer_with_gpt
 class AnswererTests(unittest.TestCase):
     def test_template_answer_uses_retrieved_items(self):
         answer = build_template_answer(
-            "Gợi ý món dưới 50k",
+            "budget meal under 50k",
             {"intent": "recommend_items", "filters": {"max_effective_price": 50000}},
             {
                 "items": [
                     {
-                        "item_name": "Súp cua",
+                        "item_name": "Sup cua",
                         "effective_price": 33000,
-                        "shop_name": "Cháo Sườn Chú Tư",
+                        "shop_name": "Chao Suon Chu Tu",
                         "item_rating": 4.8,
                         "avg_delivery_time_min": 18,
-                        "match_reasons": ["giá 33,000đ <= 50,000đ"],
+                        "match_reasons": ["gia 33,000d <= 50,000d"],
                     }
                 ]
             },
         )
 
-        self.assertIn("Súp cua", answer)
-        self.assertIn("33,000đ", answer)
+        self.assertIn("Sup cua", answer)
+        self.assertIn("33,000", answer)
 
     @patch("codebase.food_chatbot.answerer._post_json")
     def test_final_answer_calls_openai_with_retrieved_data(self, post_json):
         post_json.return_value = {
-            "choices": [{"message": {"content": "Bạn nên chọn Súp cua."}}]
+            "choices": [{"message": {"content": "Ban nen chon Sup cua."}}]
         }
 
         answer = generate_final_answer_with_gpt(
-            "Gợi ý món dưới 50k",
+            "budget meal under 50k",
             {"intent": "recommend_items", "filters": {"max_effective_price": 50000}},
-            {"items": [{"item_name": "Súp cua", "effective_price": 33000}]},
+            {"items": [{"item_name": "Sup cua", "effective_price": 33000}]},
             api_key="test-key",
+            conversation_history=[
+                {
+                    "role": "assistant",
+                    "content": "Previous recommendations",
+                    "recommendation_item_ids": ["item_041_005"],
+                }
+            ],
         )
 
         payload = post_json.call_args.args[1]
         user_payload = json.loads(payload["messages"][1]["content"])
         self.assertEqual(payload["model"], "gpt-4o-mini")
-        self.assertEqual(answer, "Bạn nên chọn Súp cua.")
-        self.assertEqual(user_payload["retrieved_data"]["items"][0]["item_name"], "Súp cua")
+        self.assertEqual(answer, "Ban nen chon Sup cua.")
+        self.assertEqual(user_payload["retrieved_data"]["items"][0]["item_name"], "Sup cua")
+        self.assertEqual(
+            user_payload["conversation_history"][0]["recommendation_item_ids"],
+            ["item_041_005"],
+        )

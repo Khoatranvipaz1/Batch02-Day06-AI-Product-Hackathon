@@ -1,0 +1,89 @@
+tools:
+  - name: retrieve_csv_rows
+    module: tools.csv_retrieve.tools
+    function: retrieve_csv_rows
+    description: >
+      Read rows from a CSV file with optional keyword search and column
+      selection. Use this for generic lookup over the ShopeeFood mock data.
+    parameters:
+      type: object
+      required:
+        - csv_path
+      properties:
+        csv_path:
+          type: string
+          description: >
+            CSV path. Relative paths are resolved from codebase/backend.
+            Example: ../mock_data/shopee_food_db_hcm_q1/v_recommendation_items.csv
+        query:
+          type: string
+          nullable: true
+          description: Optional keyword to match against any row value.
+        columns:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: Optional list of columns to return.
+        limit:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+          description: Maximum number of rows to return.
+
+  - name: retrieve_food_options
+    module: tools.csv_retrieve.tools
+    function: retrieve_food_options
+    description: >
+      Retrieve top ShopeeFood-style menu options from the recommendation CSV
+      using budget, spicy, delivery-time, shop-status, and availability
+      constraints. Use this for the top-3 AI food suggestion prototype.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+          nullable: true
+          description: Optional keyword such as "com", "bun", "healthy", or "an trua".
+        budget:
+          type: integer
+          nullable: true
+          default: 60000
+          description: Maximum total price, including delivery fee.
+        max_delivery_time_min:
+          type: integer
+          nullable: true
+          default: 30
+          description: Maximum acceptable delivery time in minutes.
+        avoid_spicy:
+          type: boolean
+          default: true
+          description: Reject items with spicy_level greater than 0.
+        only_open:
+          type: boolean
+          default: true
+          description: Return only shops whose status is open.
+        only_available:
+          type: boolean
+          default: true
+          description: Return only currently available menu items.
+        limit:
+          type: integer
+          default: 3
+          minimum: 1
+          maximum: 20
+          description: Number of recommendations to return.
+        csv_path:
+          type: string
+          nullable: true
+          description: Optional override CSV path.
+    returns:
+      type: object
+      properties:
+        recommendations:
+          type: array
+          description: Ranked food options with reason strings.
+        needs_clarification:
+          type: boolean
+          description: True when no rows match the requested constraints.

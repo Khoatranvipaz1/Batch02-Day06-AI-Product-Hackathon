@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
+import { fetchMenuItem, fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
 import type { MenuItem, RecommendationItem } from "./api";
 import "./styles.css";
 
@@ -42,6 +42,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [chatItemDetails, setChatItemDetails] = useState<Record<string, MenuItem>>({});
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -283,6 +284,26 @@ export default function App() {
       };
     });
   }, [categories, items]);
+
+  const menuItemsById = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+
+    Object.values(chatItemDetails).forEach((item) => {
+      map.set(item.id, item);
+    });
+    items.forEach((item) => {
+      map.set(item.id, item);
+    });
+
+    return map;
+  }, [chatItemDetails, items]);
+
+  const rememberChatItem = useCallback((item: MenuItem) => {
+    setChatItemDetails((currentItems) => ({
+      ...currentItems,
+      [item.id]: item
+    }));
+  }, []);
 
   function addToCart() {
     setCartCount((count) => count + 1);
@@ -528,58 +549,16 @@ export default function App() {
 
                   {msg.recommendations && msg.recommendations.length > 0 && (
                     <div className="chatbot-recommendations">
-                      {msg.recommendations.map((rec) => {
-                        const fullItem = items.find((i) => i.id === rec.item_id);
-                        return (
-                          <div key={rec.item_id} className="chatbot-rec-card">
-                            {fullItem && (
-                              <img 
-                                src={resolveAssetUrl(fullItem.image_url)} 
-                                alt={rec.item_name} 
-                                className="chatbot-rec-img"
-                                onClick={() => setSelectedItem(fullItem)}
-                              />
-                            )}
-                            <div className="chatbot-rec-details">
-                              <h5 onClick={() => fullItem && setSelectedItem(fullItem)}>{rec.item_name}</h5>
-                              <p className="chatbot-rec-shop">{rec.shop_name}</p>
-                              <div className="chatbot-rec-meta">
-                                <span className="rating">★ {rec.item_rating.toFixed(1)}</span>
-                                <span>•</span>
-                                <span>{rec.delivery_time_min} phút</span>
-                              </div>
-                              {rec.reasons && rec.reasons.length > 0 && (
-                                <ul className="chatbot-rec-reasons">
-                                  {rec.reasons.slice(0, 2).map((reason, idx) => (
-                                    <li key={idx}>{reason}</li>
-                                  ))}
-                                </ul>
-                              )}
-                              <div className="chatbot-rec-actions">
-                                <span className="price">{formatPrice(rec.effective_price)}</span>
-                                <div className="buttons">
-                                  <button 
-                                    type="button" 
-                                    className="view-btn" 
-                                    onClick={() => fullItem && setSelectedItem(fullItem)}
-                                  >
-                                    Xem
-                                  </button>
-                                  <button 
-                                    type="button" 
-                                    className="add-btn-small" 
-                                    onClick={() => {
-                                      addToCart();
-                                    }}
-                                  >
-                                    + Giỏ
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {msg.recommendations.map((rec) => (
+                        <ChatRecommendationCard
+                          item={menuItemsById.get(rec.item_id)}
+                          key={rec.item_id}
+                          onAdd={addToCart}
+                          onItemLoaded={rememberChatItem}
+                          onOpen={setSelectedItem}
+                          recommendation={rec}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -692,5 +671,123 @@ function FoodCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function ChatRecommendationCard({
+  item,
+  onAdd,
+  onItemLoaded,
+  onOpen,
+  recommendation
+}: {
+  item?: MenuItem;
+  onAdd: () => void;
+  onItemLoaded: (item: MenuItem) => void;
+  onOpen: (item: MenuItem) => void;
+  recommendation: RecommendationItem;
+}) {
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
+  const [hasLoadError, setHasLoadError] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (item) {
+      setHasLoadError(false);
+      return;
+    }
+
+    async function loadItemDetail() {
+      setIsLoadingItem(true);
+      setHasLoadError(false);
+
+      try {
+        const loadedItem = await fetchMenuItem(recommendation.item_id);
+
+        if (isMounted) {
+          onItemLoaded(loadedItem);
+        }
+      } catch {
+        if (isMounted) {
+          setHasLoadError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingItem(false);
+        }
+      }
+    }
+
+    void loadItemDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [item, onItemLoaded, recommendation.item_id]);
+
+  function openItem() {
+    if (item) {
+      onOpen(item);
+    }
+  }
+
+  return (
+    <div className="chatbot-rec-card">
+      {item ? (
+        <img
+          src={resolveAssetUrl(item.image_url)}
+          alt={recommendation.item_name}
+          className="chatbot-rec-img"
+          loading="lazy"
+          decoding="async"
+          onClick={openItem}
+        />
+      ) : (
+        <div className="chatbot-rec-img chatbot-rec-img-placeholder" aria-hidden="true">
+          {isLoadingItem ? "" : "?"}
+        </div>
+      )}
+
+      <div className="chatbot-rec-details">
+        <h5 onClick={openItem}>{recommendation.item_name}</h5>
+        <p className="chatbot-rec-shop">{recommendation.shop_name}</p>
+        <div className="chatbot-rec-meta">
+          <span className="rating">★ {recommendation.item_rating.toFixed(1)}</span>
+          <span>•</span>
+          <span>{recommendation.delivery_time_min} phút</span>
+        </div>
+        {recommendation.reasons && recommendation.reasons.length > 0 && (
+          <ul className="chatbot-rec-reasons">
+            {recommendation.reasons.slice(0, 2).map((reason, idx) => (
+              <li key={idx}>{reason}</li>
+            ))}
+          </ul>
+        )}
+        {hasLoadError && (
+          <p className="chatbot-rec-load-error">Chưa tải được chi tiết món.</p>
+        )}
+        <div className="chatbot-rec-actions">
+          <span className="price">{formatPrice(recommendation.effective_price)}</span>
+          <div className="buttons">
+            <button
+              type="button"
+              className="view-btn"
+              disabled={!item}
+              onClick={openItem}
+            >
+              {isLoadingItem ? "..." : "Xem"}
+            </button>
+            <button
+              type="button"
+              className="add-btn-small"
+              onClick={onAdd}
+            >
+              + Giỏ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

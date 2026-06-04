@@ -466,6 +466,14 @@ input:focus-visible {
   color: #b42318;
 }
 
+.load-more-sentinel {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  color: #64748b;
+  font-weight: 800;
+}
+
 .modal-backdrop {
   position: fixed;
   z-index: 20;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { fetchMenuItems, MenuItem, resolveAssetUrl, sendChatMessage, RecommendationItem } from "./api";
+import { fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
+import type { MenuItem, RecommendationItem } from "./api";
 import "./styles.css";
 
 type CategoryTile = {

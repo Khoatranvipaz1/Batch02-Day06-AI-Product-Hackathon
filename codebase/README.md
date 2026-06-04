@@ -1,13 +1,70 @@
-# Codebase
+# AI Chatbot Project
 
-Đây là nơi nhóm nộp toàn bộ phần code của prototype. Mục tiêu là để giảng viên và các nhóm khác nhìn được sản phẩm chạy như thế nào, và mỗi thành viên đã đóng góp ra sao.
+Khung dự án gồm React frontend và Python FastAPI backend để nhóm bắt đầu code chatbot.
 
-## Nhóm cần làm
+## Cấu trúc
 
-- Đưa mã nguồn của prototype vào folder này. Nếu prototype được deploy hoặc host ở nơi khác, hãy để lại đường link kèm hướng dẫn truy cập.
-- Trong file `README.md` của nhóm, ghi rõ ba điều: cách chạy prototype (các bước cài đặt và biến môi trường nếu cần), những công cụ và API đã dùng (model AI, framework, công cụ dựng giao diện…), và phần phân công ai làm gì.
-- Mỗi thành viên nên có ít nhất một commit thực chất trong repo — đây là căn cứ để ghi nhận đóng góp của từng người.
+```text
+codebase/
+  backend/
+    app/
+      main.py
+      config.py
+      routers/chat.py
+    requirements.txt
+    .env.example
+  frontend/
+    src/
+      App.tsx
+      api.ts
+      main.tsx
+      styles.css
+    package.json
+    .env.example
+  package.json
+  .env.example
+```
 
-## Lưu ý
+## Setup backend Python
 
-Đừng commit những thông tin nhạy cảm như API key hay file `.env`. Nếu prototype cần các biến môi trường, hãy dùng một file `.env.example` để mô tả các biến đó thay vì để lộ giá trị thật.
+```bash
+cd codebase/backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload
+```
+
+Backend chạy mặc định tại `http://localhost:8000`.
+
+Nếu máy Windows dùng Python Launcher, có thể thay `python` bằng `py`.
+
+## Setup frontend React
+
+```bash
+cd codebase/frontend
+npm install
+copy .env.example .env
+npm run dev
+```
+
+Frontend chạy mặc định tại `http://localhost:5173`.
+
+Nếu PowerShell báo chặn `npm.ps1`, dùng `npm.cmd install` và `npm.cmd run dev`, hoặc chạy bằng terminal CMD/Git Bash.
+
+## Chạy cả frontend và backend từ thư mục `codebase`
+
+Phần này là tuỳ chọn nếu nhóm muốn chạy hai service bằng một lệnh.
+
+```bash
+cd codebase
+npm install
+npm run dev
+```
+
+## Ghi chú môi trường
+
+- Không commit file `.env`.
+- API key chỉ để ở backend `.env`, không để trong frontend.
+- Endpoint mẫu hiện tại là `POST /api/chat`; phần gọi model thật sẽ được code trong `backend/app/routers/chat.py`.

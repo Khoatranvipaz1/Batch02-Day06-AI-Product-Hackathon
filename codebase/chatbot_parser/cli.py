@@ -3,6 +3,7 @@ import json
 import sys
 from pathlib import Path
 
+from .openai_parser import DEFAULT_OPENAI_MODEL, OpenAIParserError, parse_user_query_with_gpt
 from .parser import parse_user_query
 
 
@@ -28,6 +29,22 @@ def main() -> int:
         help="User message. If omitted, runs built-in demo examples.",
     )
     parser.add_argument(
+        "--mode",
+        choices=["api", "rules"],
+        default="api",
+        help="api calls GPT-4o mini; rules runs the offline fallback parser.",
+    )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_OPENAI_MODEL,
+        help="OpenAI model for --mode api.",
+    )
+    parser.add_argument(
+        "--fallback-rules",
+        action="store_true",
+        help="If API parsing fails, fall back to the offline parser.",
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         default=None,
@@ -44,7 +61,27 @@ def main() -> int:
     indent = None if args.compact else 2
 
     for index, message in enumerate(messages):
-        task = parse_user_query(message, data_dir=args.data_dir)
+        try:
+            if args.mode == "api":
+                task = parse_user_query_with_gpt(
+                    message,
+                    data_dir=args.data_dir,
+                    model=args.model,
+                )
+            else:
+                task = parse_user_query(message, data_dir=args.data_dir)
+        except OpenAIParserError as exc:
+            if not args.fallback_rules:
+                print(f"OpenAI parser failed: {exc}", file=sys.stderr)
+                print(
+                    "Set OPENAI_API_KEY, or use --mode rules for offline parsing.",
+                    file=sys.stderr,
+                )
+                return 1
+            task = parse_user_query(message, data_dir=args.data_dir)
+            task["parser"] = "offline_rules_fallback"
+            task["api_error"] = str(exc)
+
         if len(messages) > 1:
             print(f"\n# {message}")
         print(json.dumps(task, ensure_ascii=False, indent=indent))

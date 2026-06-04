@@ -1,6 +1,19 @@
 # Chatbot parser
 
-Bước đầu của chatbot ShopeeFood demo: đổi câu hỏi tiếng Việt của người dùng thành task JSON có thể dùng để query mock database.
+Bước đầu của chatbot ShopeeFood demo: dùng GPT-4o mini để đổi câu hỏi tiếng Việt của người dùng thành task JSON có thể dùng để query mock database.
+
+Parser mặc định gọi OpenAI Chat Completions API với Structured Outputs (`response_format: json_schema`). Rule-based parser cũ vẫn còn để chạy offline bằng `--mode rules`.
+
+## Cấu hình API key
+
+Không commit file `.env` thật. Có thể xem mẫu ở `codebase/.env.example`.
+
+PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+$env:OPENAI_MODEL="gpt-4o-mini"
+```
 
 ## Chạy thử
 
@@ -8,7 +21,13 @@ Bước đầu của chatbot ShopeeFood demo: đổi câu hỏi tiếng Việt c
 python -m codebase.chatbot_parser "Gợi ý món dưới 50k gần tôi"
 ```
 
-Nếu không truyền câu hỏi, CLI sẽ chạy vài ví dụ demo:
+Chạy offline bằng rule parser khi chưa có API key:
+
+```powershell
+python -m codebase.chatbot_parser --mode rules "Gợi ý món dưới 50k gần tôi"
+```
+
+Nếu không truyền câu hỏi, CLI sẽ chạy vài ví dụ demo. Với mode API, mỗi ví dụ là một API call:
 
 ```powershell
 python -m codebase.chatbot_parser
@@ -47,4 +66,4 @@ python -m codebase.chatbot_parser
 - `ranking`: thứ tự ưu tiên khi sort kết quả.
 - `needs_clarification`: `true` khi câu hỏi quá mơ hồ và chatbot nên hỏi lại.
 
-Parser hiện chạy offline bằng rule + vocab trong CSV: `tags.csv`, `cuisines.csv`, `allergens.csv`, `menu_items.csv`. Sau này có thể thêm LLM fallback trước khi query DB.
+Rule parser offline vẫn dùng vocab trong CSV: `tags.csv`, `cuisines.csv`, `allergens.csv`, `menu_items.csv`. API parser gửi catalog context từ các CSV này vào GPT-4o mini để model phân tách đúng theo dữ liệu demo.

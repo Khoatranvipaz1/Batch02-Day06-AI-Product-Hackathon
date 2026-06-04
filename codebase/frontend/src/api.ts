@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export type MenuItem = {
@@ -32,6 +33,42 @@ export type MenuResponse = {
   categories: string[];
   total: number;
 };
+
+export type RecommendationItem = {
+  item_id: string;
+  item_name: string;
+  shop_name: string;
+  category_name: string;
+  effective_price: number;
+  delivery_fee: number;
+  total_price: number;
+  delivery_time_min: number;
+  item_rating: number;
+  shop_rating: number;
+  spicy_level: number;
+  score: number;
+  reasons: string[];
+};
+
+export type IntentResponse = {
+  budget: number | null;
+  max_delivery_min: number | null;
+  no_spicy: boolean;
+  lunch: boolean;
+  healthy: boolean;
+  light: boolean;
+  cheap: boolean;
+  unclear: boolean;
+};
+
+export type ChatResponse = {
+  reply: string;
+  intent: IntentResponse;
+  clarifying_question: string | null;
+  warnings: string[];
+  recommendations: RecommendationItem[];
+};
+
 
 export function resolveAssetUrl(path: string) {
   if (path.startsWith("http")) {

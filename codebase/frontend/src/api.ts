@@ -50,16 +50,7 @@ export type RecommendationItem = {
   reasons: string[];
 };
 
-export type IntentResponse = {
-  budget: number | null;
-  max_delivery_min: number | null;
-  no_spicy: boolean;
-  lunch: boolean;
-  healthy: boolean;
-  light: boolean;
-  cheap: boolean;
-  unclear: boolean;
-};
+export type IntentResponse = Record<string, unknown>;
 
 export type ChatResponse = {
   reply: string;
@@ -67,6 +58,10 @@ export type ChatResponse = {
   clarifying_question: string | null;
   warnings: string[];
   recommendations: RecommendationItem[];
+};
+
+export type ChatRequest = {
+  message: string;
 };
 
 
@@ -95,22 +90,19 @@ export async function sendChatMessage(message: string) {
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ message })
+    body: JSON.stringify({ message } satisfies ChatRequest)
   });
 
   if (!response.ok) {
-    throw new Error("Failed to send chat message");
+    throw new Error(`Failed to send chat message: ${response.status}`);
   }
 
-  return response.json() as Promise<ChatResponse>;
-}
+  const data = (await response.json()) as ChatResponse;
 
-export async function getMenuSummary() {
-  const response = await fetch(`${API_BASE_URL}/api/menu/summary`);
-
-  if (!response.ok) {
-    throw new Error("Failed to load menu summary");
-  }
-
-  return response.json() as Promise<{ items: number; shops: number; categories: number }>;
+  return {
+    ...data,
+    clarifying_question: data.clarifying_question ?? null,
+    warnings: data.warnings ?? [],
+    recommendations: data.recommendations ?? []
+  };
 }

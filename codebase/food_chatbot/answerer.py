@@ -36,6 +36,7 @@ def generate_final_answer_with_gpt(
     model: str | None = None,
     api_key: str | None = None,
     timeout_sec: int = 30,
+    conversation_history: list[dict[str, Any]] | None = None,
 ) -> str:
     resolved_api_key = api_key if api_key is not None else os.getenv("OPENAI_API_KEY")
     if not resolved_api_key:
@@ -52,6 +53,7 @@ def generate_final_answer_with_gpt(
                 "content": json.dumps(
                     {
                         "user_message": user_message,
+                        "conversation_history": _trim_history(conversation_history),
                         "parsed_task": _trim_task(task),
                         "retrieved_data": _trim_retrieval(retrieved_data),
                     },
@@ -132,6 +134,29 @@ def _trim_task(task: dict[str, Any]) -> dict[str, Any]:
         "needs_clarification": task.get("needs_clarification", False),
         "clarifying_questions": task.get("clarifying_questions", []),
     }
+
+
+def _trim_history(history: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    if not history:
+        return []
+
+    trimmed: list[dict[str, Any]] = []
+    for message in history[-10:]:
+        role = str(message.get("role", "")).strip()
+        content = str(message.get("content", "")).strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        item_ids = message.get("recommendation_item_ids") or []
+        trimmed.append(
+            {
+                "role": role,
+                "content": content[:1200],
+                "recommendation_item_ids": [
+                    str(item_id) for item_id in item_ids if str(item_id).strip()
+                ][:8],
+            }
+        )
+    return trimmed
 
 
 def _trim_retrieval(retrieved_data: dict[str, Any]) -> dict[str, Any]:

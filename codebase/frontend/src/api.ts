@@ -63,21 +63,21 @@ export type RecommendationItem = {
 
 export type ChatResponse = {
   reply: string;
-  intent: {
-    budget: number | null;
-    max_delivery_min: number | null;
-    no_spicy: boolean;
-    lunch: boolean;
-    healthy: boolean;
-    light: boolean;
-    cheap: boolean;
-    unclear: boolean;
-  };
+  intent: Record<string, unknown>;
   clarifying_question: string | null;
   warnings: string[];
   recommendations: RecommendationItem[];
 };
 
+export type ChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+  recommendation_item_ids?: string[];
+};
+
+export type ChatRequest = {
+  message: string;
+  history: ChatHistoryMessage[];
 export type ChatRequest = {
   message: string;
 };
@@ -160,13 +160,13 @@ export async function fetchMenuItemImages(query?: string, limit = 20, offset = 0
   return response.json() as Promise<MenuItemImage[]>;
 }
 
-export async function sendChatMessage(message: string) {
+export async function sendChatMessage(message: string, history: ChatHistoryMessage[] = []) {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ message } satisfies ChatRequest)
+    body: JSON.stringify({ message, history } satisfies ChatRequest)
   });
 
   if (!response.ok) {

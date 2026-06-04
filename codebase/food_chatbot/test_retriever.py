@@ -80,3 +80,22 @@ class RetrieverTests(unittest.TestCase):
         self.assertTrue(
             all(item["effective_price"] <= 50000 for item in result["fallback_items"])
         )
+
+    def test_exclude_item_ids_removes_previous_recommendations(self):
+        task = {
+            "intent": "recommend_items",
+            "task_type": "recommend_items",
+            "entities": {"exclude_item_ids": ["item_041_005"]},
+            "filters": {
+                "is_available": 1,
+                "shop_status": "open",
+                "max_effective_price": 50000,
+            },
+            "ranking": {"recommendation_score": "desc"},
+            "limit": 10,
+        }
+
+        result = retrieve_items_for_task(task)
+
+        self.assertGreater(len(result["items"]), 0)
+        self.assertNotIn("item_041_005", {item["item_id"] for item in result["items"]})

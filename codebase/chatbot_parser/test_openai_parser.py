@@ -19,6 +19,7 @@ def _sample_model_task():
             "include_cuisines": [],
             "dish_keywords": [],
             "exclude_allergens": [],
+            "exclude_item_ids": [],
             "party_size": None,
         },
         "filters": {
@@ -74,6 +75,33 @@ class OpenAIParserTests(unittest.TestCase):
         self.assertEqual(task["ranking"]["effective_price"], "asc")
         self.assertNotIn("avg_delivery_time_min", task["ranking"])
         self.assertEqual(task["parser"], "openai_chat_completions_json_schema")
+
+    @patch("codebase.chatbot_parser.openai_parser._post_json")
+    def test_api_payload_includes_conversation_history(self, post_json):
+        post_json.return_value = {
+            "choices": [
+                {"message": {"content": json.dumps(_sample_model_task(), ensure_ascii=False)}}
+            ]
+        }
+
+        parse_user_query_with_gpt(
+            "Món khác đi",
+            api_key="test-key",
+            conversation_history=[
+                {
+                    "role": "assistant",
+                    "content": "Mình gợi ý Súp cua.",
+                    "recommendation_item_ids": ["item_018_004"],
+                }
+            ],
+        )
+
+        payload = post_json.call_args.args[1]
+        user_payload = json.loads(payload["messages"][1]["content"])
+        self.assertEqual(
+            user_payload["conversation_history"][0]["recommendation_item_ids"],
+            ["item_018_004"],
+        )
 
     def test_api_error_sanitizes_key_like_strings(self):
         body = "Incorrect API key provided: sk-proj-********************************abcD."

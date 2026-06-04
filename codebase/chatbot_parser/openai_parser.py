@@ -106,6 +106,7 @@ TASK_JSON_SCHEMA: dict[str, Any] = {
                 "include_cuisines",
                 "dish_keywords",
                 "exclude_allergens",
+                "exclude_item_ids",
                 "party_size",
             ],
             "properties": {
@@ -114,6 +115,7 @@ TASK_JSON_SCHEMA: dict[str, Any] = {
                 "include_cuisines": {"type": "array", "items": {"type": "string"}},
                 "dish_keywords": {"type": "array", "items": {"type": "string"}},
                 "exclude_allergens": {"type": "array", "items": {"type": "string"}},
+                "exclude_item_ids": {"type": "array", "items": {"type": "string"}},
                 "party_size": {
                     "anyOf": [
                         {"type": "integer"},
@@ -214,6 +216,7 @@ Important rules:
 - Use max_avg_delivery_time_min for fast-delivery requests. Default fast delivery threshold is 20 minutes.
 - Use min_spicy_level=3 for "cay cay", min_spicy_level=4 for "rất/siêu cay", and max_spicy_level=0 for "không cay".
 - If the user asks for group ordering, set party_size and min_portion_people when possible.
+- Use conversation_history for follow-up context. If the user says they disliked previous suggestions or asks for another option, keep the previous food constraints and put previous recommendation item IDs in entities.exclude_item_ids.
 - Choose primary_intent as the strongest user need; put other matched needs in sub_intents.
 - If the message is too vague or unrelated to food ordering, set task_type="clarify_food_need", intent="unknown", primary_intent="unknown", and add a short Vietnamese clarifying question.
 """
@@ -226,6 +229,7 @@ def parse_user_query_with_gpt(
     model: str | None = None,
     api_key: str | None = None,
     timeout_sec: int = 30,
+    conversation_history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Parse a user query by calling GPT-4o mini with Structured Outputs."""
 
@@ -249,6 +253,7 @@ def parse_user_query_with_gpt(
                 "content": json.dumps(
                     {
                         "user_message": message,
+                        "conversation_history": _trim_history(conversation_history),
                         "catalog_context": catalog_context,
                     },
                     ensure_ascii=False,
@@ -287,6 +292,29 @@ def build_catalog_context(data_dir: Path) -> dict[str, Any]:
         "supported_ranking_fields": RANKING_FIELDS,
         "default_filters": {"is_available": 1, "shop_status": "open"},
     }
+
+
+def _trim_history(history: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    if not history:
+        return []
+
+    trimmed: list[dict[str, Any]] = []
+    for message in history[-10:]:
+        role = str(message.get("role", "")).strip()
+        content = str(message.get("content", "")).strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        item_ids = message.get("recommendation_item_ids") or []
+        trimmed.append(
+            {
+                "role": role,
+                "content": content[:1200],
+                "recommendation_item_ids": [
+                    str(item_id) for item_id in item_ids if str(item_id).strip()
+                ][:8],
+            }
+        )
+    return trimmed
 
 
 def _names(rows: list[dict[str, str]]) -> list[str]:

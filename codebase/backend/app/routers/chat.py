@@ -19,8 +19,15 @@ from codebase.food_chatbot.pipeline import run_food_chatbot  # noqa: E402
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+class ChatHistoryMessage(BaseModel):
+    role: str
+    content: str
+    recommendation_item_ids: list[str] = Field(default_factory=list)
+
+
 class ChatRequest(BaseModel):
     message: str
+    history: list[ChatHistoryMessage] = Field(default_factory=list)
 
 
 class RecommendationItem(BaseModel):
@@ -58,6 +65,9 @@ async def create_chat(request: ChatRequest):
             model=settings.ai_model,
             fallback_rules=False,
             fallback_template=False,
+            conversation_history=[
+                history_message.model_dump() for history_message in request.history[-10:]
+            ],
         )
     except (OpenAIParserError, FinalAnswerError) as exc:
         raise HTTPException(

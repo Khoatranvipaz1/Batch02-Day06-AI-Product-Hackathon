@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "frontend": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "backend": "python -m uvicorn app.main:app --reload --app-dir backend",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

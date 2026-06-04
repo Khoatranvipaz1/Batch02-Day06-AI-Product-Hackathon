@@ -78,6 +78,18 @@ export type ChatResponse = {
   recommendations: RecommendationItem[];
 };
 
+export type ChatRequest = {
+  message: string;
+};
+
+export type FetchMenuItemsOptions = {
+  search?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+  availableOnly?: boolean;
+};
+
 export function resolveAssetUrl(path: string) {
   if (path.startsWith("http")) {
     return path;
@@ -86,8 +98,28 @@ export function resolveAssetUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
 
-export async function fetchMenuItems() {
-  const params = new URLSearchParams({ limit: "300" });
+export async function fetchMenuItems(options: FetchMenuItemsOptions = {}) {
+  const {
+    search = "",
+    category = "",
+    limit = 24,
+    offset = 0,
+    availableOnly = true
+  } = options;
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    available_only: String(availableOnly)
+  });
+
+  if (search.trim()) {
+    params.set("search", search.trim());
+  }
+
+  if (category.trim() && category !== "all") {
+    params.set("category", category.trim());
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/menu-items?${params}`);
 
   if (!response.ok) {

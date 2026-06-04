@@ -126,6 +126,7 @@ async def list_menu_items(
     category: str = "",
     available_only: bool = True,
     limit: int = Query(default=120, ge=1, le=300),
+    offset: int = Query(default=0, ge=0),
 ):
     items = load_menu_items()
     normalized_search = search.casefold().strip()
@@ -150,8 +151,17 @@ async def list_menu_items(
             or normalized_search in item.description.casefold()
         ]
 
+    items = sorted(
+        items,
+        key=lambda item: (item.sold_count, item.rating_avg),
+        reverse=True,
+    )
     categories = sorted({item.category_name for item in load_menu_items()})
-    return MenuResponse(items=items[:limit], categories=categories, total=len(items))
+    return MenuResponse(
+        items=items[offset : offset + limit],
+        categories=categories,
+        total=len(items),
+    )
 
 
 @router.get("/{item_id}", response_model=MenuItem)

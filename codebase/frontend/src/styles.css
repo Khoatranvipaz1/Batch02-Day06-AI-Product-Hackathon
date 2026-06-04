@@ -466,6 +466,14 @@ input:focus-visible {
   color: #b42318;
 }
 
+.load-more-sentinel {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  color: #64748b;
+  font-weight: 800;
+}
+
 .modal-backdrop {
   position: fixed;
   z-index: 20;
@@ -1139,6 +1147,15 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.chatbot-rec-img-placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #fff5f1, #f3f4f6);
+  color: #ee4d2d;
+  cursor: default;
+  font-weight: 800;
+}
+
 .chatbot-rec-details {
   flex: 1;
   display: flex;
@@ -1191,6 +1208,13 @@ input:focus-visible {
   margin-bottom: 2px;
 }
 
+.chatbot-rec-load-error {
+  margin: 0 0 8px;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .chatbot-rec-actions {
   display: flex;
   align-items: center;
@@ -1227,6 +1251,11 @@ input:focus-visible {
 
 .chatbot-rec-actions .view-btn:hover {
   background-color: #e5e7eb;
+}
+
+.chatbot-rec-actions .view-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .chatbot-rec-actions .add-btn-small {

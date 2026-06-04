@@ -78,6 +78,16 @@ export type ChatHistoryMessage = {
 export type ChatRequest = {
   message: string;
   history: ChatHistoryMessage[];
+export type ChatRequest = {
+  message: string;
+};
+
+export type FetchMenuItemsOptions = {
+  search?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+  availableOnly?: boolean;
 };
 
 export function resolveAssetUrl(path: string) {
@@ -88,8 +98,28 @@ export function resolveAssetUrl(path: string) {
   return `${API_BASE_URL}${path}`;
 }
 
-export async function fetchMenuItems() {
-  const params = new URLSearchParams({ limit: "300" });
+export async function fetchMenuItems(options: FetchMenuItemsOptions = {}) {
+  const {
+    search = "",
+    category = "",
+    limit = 24,
+    offset = 0,
+    availableOnly = true
+  } = options;
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    available_only: String(availableOnly)
+  });
+
+  if (search.trim()) {
+    params.set("search", search.trim());
+  }
+
+  if (category.trim() && category !== "all") {
+    params.set("category", category.trim());
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/menu-items?${params}`);
 
   if (!response.ok) {
@@ -97,6 +127,18 @@ export async function fetchMenuItems() {
   }
 
   return response.json() as Promise<MenuResponse>;
+}
+
+export async function fetchMenuItem(itemId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/menu-items/${encodeURIComponent(itemId)}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to load menu item");
+  }
+
+  return response.json() as Promise<MenuItem>;
 }
 
 export async function fetchMenuItemImages(query?: string, limit = 20, offset = 0) {

@@ -1,0 +1,108 @@
+[
+  {
+    "id": "budget_fast_lunch",
+    "description": "Happy path: mon an trua re va giao nhanh.",
+    "input": "Goi y mon an trua duoi 50k giao nhanh o Quan 1",
+    "expect": {
+      "intent": "recommend_items",
+      "primary_intent": "budget_meal",
+      "filters": {
+        "max_effective_price": 50000,
+        "max_avg_delivery_time_min": 20,
+        "is_available": 1,
+        "shop_status": "open"
+      },
+      "entities_contains": {
+        "include_tags": ["giao nhanh", "an trua"]
+      },
+      "min_any_recommendations": 1,
+      "answer_contains_any": ["goi y", "phu hop", "mon"]
+    }
+  },
+  {
+    "id": "specific_dish_allergen",
+    "description": "Specific dish search with food restriction.",
+    "input": "Toi muon an Banh khot Vung Tau, khong hai san, tam 60k",
+    "expect": {
+      "intent": "recommend_items",
+      "task_type": "search_or_recommend_items",
+      "filters": {
+        "max_effective_price": 60000,
+        "is_available": 1,
+        "shop_status": "open"
+      },
+      "entities_contains": {
+        "dish_keywords": ["Banh khot Vung Tau"],
+        "exclude_allergens": ["hai san"]
+      },
+      "min_any_recommendations": 1,
+      "answer_contains_any": ["Banh", "gan dung", "khong"]
+    }
+  },
+  {
+    "id": "healthy_low_oil",
+    "description": "Healthy recommendation should apply health tags or calorie filter.",
+    "input": "Minh dang an healthy, it dau mo, co mon nao nhe bung khong?",
+    "expect": {
+      "intent": "recommend_items",
+      "primary_intent": "healthy_food",
+      "entities_contains": {
+        "include_tags": ["healthy", "it dau mo"]
+      },
+      "min_any_recommendations": 1,
+      "answer_contains_any": ["healthy", "goi y", "mon"]
+    }
+  },
+  {
+    "id": "spicy_dinner",
+    "description": "Spicy dinner should set min spicy level.",
+    "input": "Toi nay muon an mon cay cay, rating tot",
+    "expect": {
+      "intent": "recommend_items",
+      "primary_intent": "spicy_food",
+      "filters": {
+        "min_spicy_level": 3,
+        "is_available": 1,
+        "shop_status": "open"
+      },
+      "entities_contains": {
+        "include_tags": ["cay", "an toi"]
+      },
+      "min_any_recommendations": 1,
+      "answer_contains_any": ["cay", "rating", "goi y"]
+    }
+  },
+  {
+    "id": "group_vegetarian",
+    "description": "Group vegetarian order should capture party size and recover when mock data has no strict item.",
+    "input": "Dat mon chay cho nhom 3 nguoi, uu tien combo",
+    "expect": {
+      "intent": "recommend_items",
+      "primary_intent": "group_order",
+      "filters": {
+        "min_portion_people": 3,
+        "is_available": 1,
+        "shop_status": "open"
+      },
+      "entities_contains": {
+        "include_tags": ["chay", "combo"],
+        "party_size": 3
+      },
+      "min_any_recommendations": 0,
+      "answer_contains_any": ["chua tim thay", "noi dieu kien", "doi loai mon", "bo bot dieu kien"]
+    }
+  },
+  {
+    "id": "clarify_noise",
+    "description": "Error case: unrelated/vague message should ask a clarifying question.",
+    "input": "Hom nay thoi tiet the nao?",
+    "expect": {
+      "intent": "unknown",
+      "task_type": "clarify_food_need",
+      "needs_clarification": true,
+      "min_clarifying_questions": 1,
+      "min_any_recommendations": 0,
+      "answer_contains_any": ["goi y", "gia", "mon", "giao"]
+    }
+  }
+]

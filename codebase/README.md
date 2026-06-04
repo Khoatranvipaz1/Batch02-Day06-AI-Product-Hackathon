@@ -68,3 +68,23 @@ npm run dev
 - Không commit file `.env`.
 - API key chỉ để ở backend `.env`, không để trong frontend.
 - Endpoint mẫu hiện tại là `POST /api/chat`; phần gọi model thật sẽ được code trong `backend/app/routers/chat.py`.
+
+## Prompt eval
+
+Bộ eval prompt nằm trong `evals/`:
+
+- `evals/eval_cases.json`: các câu hỏi mẫu và kỳ vọng intent/filter/entity.
+- `evals/run_eval.py`: script chạy eval luồng parser -> retriever -> answer.
+- `evals/PROMPT_EVAL.md`: checklist và kịch bản eval để dùng khi demo.
+
+Chạy offline không cần API key từ thư mục gốc repo:
+
+```bash
+.\.venv\Scripts\python.exe -c "import runpy, sys; sys.argv=['run_eval.py']; runpy.run_path('codebase/evals/run_eval.py', run_name='__main__')"
+```
+
+Khi đã có API key, có thể chạy qua model thật:
+
+```bash
+.\.venv\Scripts\python.exe -c "import runpy, sys; sys.argv=['run_eval.py','--parse-mode','api','--answer-mode','api']; runpy.run_path('codebase/evals/run_eval.py', run_name='__main__')"
+```

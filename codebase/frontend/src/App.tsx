@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
 import type { ChatHistoryMessage, MenuItem, RecommendationItem } from "./api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fetchMenuItem, fetchMenuItems, resolveAssetUrl, sendChatMessage } from "./api";
+import type { MenuItem, RecommendationItem } from "./api";
 import "./styles.css";
 
 type CategoryTile = {
@@ -9,6 +12,7 @@ type CategoryTile = {
 };
 
 const priceFormatter = new Intl.NumberFormat("vi-VN");
+const MENU_PAGE_SIZE = 24;
 
 const fallbackCategoryImages = [
   "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=300&q=80",
@@ -73,11 +77,14 @@ function formatSold(value: number) {
 export default function App() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [chatItemDetails, setChatItemDetails] = useState<Record<string, MenuItem>>({});
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
   // Chatbot states
@@ -100,6 +107,8 @@ export default function App() {
   ]);
   const [isBotTyping, setIsBotTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const filterKeyRef = useRef("");
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -156,17 +165,29 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    filterKeyRef.current = `${activeCategory}\n${query.trim()}`;
 
     async function loadMenu() {
+      setIsLoading(true);
+      setError("");
+
       try {
-        const data = await fetchMenuItems();
+        const data = await fetchMenuItems({
+          search: query,
+          category: activeCategory,
+          limit: MENU_PAGE_SIZE,
+          offset: 0
+        });
 
         if (!isMounted) {
           return;
         }
 
-        setItems(data.items);
-        setCategories(data.categories);
+        if (filterKeyRef.current === `${activeCategory}\n${query.trim()}`) {
+          setItems(data.items);
+          setCategories(data.categories);
+          setTotalItems(data.total);
+        }
       } catch (caughtError) {
         if (isMounted) {
           setError(
@@ -187,7 +208,82 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeCategory, query]);
+
+  const hasMoreItems = items.length < totalItems;
+
+  const loadNextMenuPage = useCallback(async () => {
+    if (isLoading || isLoadingMore || !hasMoreItems) {
+      return;
+    }
+
+    const offset = items.length;
+    const filterKey = filterKeyRef.current;
+    setIsLoadingMore(true);
+
+    try {
+      const data = await fetchMenuItems({
+        search: query,
+        category: activeCategory,
+        limit: MENU_PAGE_SIZE,
+        offset
+      });
+
+      if (filterKey !== filterKeyRef.current) {
+        return;
+      }
+
+      setItems((currentItems) => {
+        const seenIds = new Set(currentItems.map((item) => item.id));
+        const nextItems = data.items.filter((item) => !seenIds.has(item.id));
+        return [...currentItems, ...nextItems];
+      });
+      setCategories(data.categories);
+      setTotalItems(data.total);
+    } catch (caughtError) {
+      if (filterKey === filterKeyRef.current) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "KhÃ´ng táº£i Ä‘Æ°á»£c dá»¯ liá»‡u mÃ³n Äƒn"
+        );
+      }
+    } finally {
+      if (filterKey === filterKeyRef.current) {
+        setIsLoadingMore(false);
+      }
+    }
+  }, [
+    activeCategory,
+    hasMoreItems,
+    isLoading,
+    isLoadingMore,
+    items.length,
+    query
+  ]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+
+    if (!target || !hasMoreItems || isLoading || isLoadingMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          void loadNextMenuPage();
+        }
+      },
+      { rootMargin: "420px 0px" }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreItems, isLoading, isLoadingMore, loadNextMenuPage]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("vi-VN");
@@ -233,6 +329,26 @@ export default function App() {
       };
     });
   }, [categories, items]);
+
+  const menuItemsById = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+
+    Object.values(chatItemDetails).forEach((item) => {
+      map.set(item.id, item);
+    });
+    items.forEach((item) => {
+      map.set(item.id, item);
+    });
+
+    return map;
+  }, [chatItemDetails, items]);
+
+  const rememberChatItem = useCallback((item: MenuItem) => {
+    setChatItemDetails((currentItems) => ({
+      ...currentItems,
+      [item.id]: item
+    }));
+  }, []);
 
   function addToCart() {
     setCartCount((count) => count + 1);
@@ -290,6 +406,8 @@ export default function App() {
             <img 
               src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&q=80" 
               alt="Tất cả" 
+              loading="lazy"
+              decoding="async"
             />
             <span>Tất cả</span>
           </button>
@@ -300,7 +418,12 @@ export default function App() {
               type="button"
               onClick={() => setActiveCategory(category.name)}
             >
-              <img src={category.imageUrl} alt={category.name} />
+              <img
+                src={category.imageUrl}
+                alt={category.name}
+                loading="lazy"
+                decoding="async"
+              />
               <span>{category.name}</span>
             </button>
           ))}
@@ -344,7 +467,7 @@ export default function App() {
               <h2 id="all-items-title">
                 {activeCategory === "all" ? "Tất cả món ngon" : activeCategory}
               </h2>
-              <p>{filteredItems.length} món phù hợp</p>
+              <p>{totalItems} món phù hợp</p>
             </div>
           </div>
 
@@ -358,10 +481,14 @@ export default function App() {
               />
             ))}
           </div>
+
+          <div className="load-more-sentinel" ref={loadMoreRef}>
+            {isLoadingMore && <span>Đang tải thêm món ăn...</span>}
+          </div>
         </section>
       )}
 
-      {!isLoading && !error && filteredItems.length === 0 && (
+      {!isLoading && !error && items.length === 0 && (
         <p className="status-text">Không có món phù hợp với tìm kiếm hiện tại.</p>
       )}
 
@@ -467,58 +594,16 @@ export default function App() {
 
                   {msg.recommendations && msg.recommendations.length > 0 && (
                     <div className="chatbot-recommendations">
-                      {msg.recommendations.map((rec) => {
-                        const fullItem = items.find((i) => i.id === rec.item_id);
-                        return (
-                          <div key={rec.item_id} className="chatbot-rec-card">
-                            {fullItem && (
-                              <img 
-                                src={resolveAssetUrl(fullItem.image_url)} 
-                                alt={rec.item_name} 
-                                className="chatbot-rec-img"
-                                onClick={() => setSelectedItem(fullItem)}
-                              />
-                            )}
-                            <div className="chatbot-rec-details">
-                              <h5 onClick={() => fullItem && setSelectedItem(fullItem)}>{rec.item_name}</h5>
-                              <p className="chatbot-rec-shop">{rec.shop_name}</p>
-                              <div className="chatbot-rec-meta">
-                                <span className="rating">★ {rec.item_rating.toFixed(1)}</span>
-                                <span>•</span>
-                                <span>{rec.delivery_time_min} phút</span>
-                              </div>
-                              {rec.reasons && rec.reasons.length > 0 && (
-                                <ul className="chatbot-rec-reasons">
-                                  {rec.reasons.slice(0, 2).map((reason, idx) => (
-                                    <li key={idx}>{reason}</li>
-                                  ))}
-                                </ul>
-                              )}
-                              <div className="chatbot-rec-actions">
-                                <span className="price">{formatPrice(rec.effective_price)}</span>
-                                <div className="buttons">
-                                  <button 
-                                    type="button" 
-                                    className="view-btn" 
-                                    onClick={() => fullItem && setSelectedItem(fullItem)}
-                                  >
-                                    Xem
-                                  </button>
-                                  <button 
-                                    type="button" 
-                                    className="add-btn-small" 
-                                    onClick={() => {
-                                      addToCart();
-                                    }}
-                                  >
-                                    + Giỏ
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {msg.recommendations.map((rec) => (
+                        <ChatRecommendationCard
+                          item={menuItemsById.get(rec.item_id)}
+                          key={rec.item_id}
+                          onAdd={addToCart}
+                          onItemLoaded={rememberChatItem}
+                          onOpen={setSelectedItem}
+                          recommendation={rec}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -590,7 +675,12 @@ function FoodCard({
     <article className="food-card">
       <div className="card-media">
         <button className="image-button" type="button" onClick={onOpen}>
-          <img src={resolveAssetUrl(item.image_url)} alt={item.name} />
+          <img
+            src={resolveAssetUrl(item.image_url)}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+          />
         </button>
 
         {(badges.length > 0 || item.is_signature || item.is_combo) && (
@@ -636,5 +726,123 @@ function FoodCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function ChatRecommendationCard({
+  item,
+  onAdd,
+  onItemLoaded,
+  onOpen,
+  recommendation
+}: {
+  item?: MenuItem;
+  onAdd: () => void;
+  onItemLoaded: (item: MenuItem) => void;
+  onOpen: (item: MenuItem) => void;
+  recommendation: RecommendationItem;
+}) {
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
+  const [hasLoadError, setHasLoadError] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (item) {
+      setHasLoadError(false);
+      return;
+    }
+
+    async function loadItemDetail() {
+      setIsLoadingItem(true);
+      setHasLoadError(false);
+
+      try {
+        const loadedItem = await fetchMenuItem(recommendation.item_id);
+
+        if (isMounted) {
+          onItemLoaded(loadedItem);
+        }
+      } catch {
+        if (isMounted) {
+          setHasLoadError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingItem(false);
+        }
+      }
+    }
+
+    void loadItemDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [item, onItemLoaded, recommendation.item_id]);
+
+  function openItem() {
+    if (item) {
+      onOpen(item);
+    }
+  }
+
+  return (
+    <div className="chatbot-rec-card">
+      {item ? (
+        <img
+          src={resolveAssetUrl(item.image_url)}
+          alt={recommendation.item_name}
+          className="chatbot-rec-img"
+          loading="lazy"
+          decoding="async"
+          onClick={openItem}
+        />
+      ) : (
+        <div className="chatbot-rec-img chatbot-rec-img-placeholder" aria-hidden="true">
+          {isLoadingItem ? "" : "?"}
+        </div>
+      )}
+
+      <div className="chatbot-rec-details">
+        <h5 onClick={openItem}>{recommendation.item_name}</h5>
+        <p className="chatbot-rec-shop">{recommendation.shop_name}</p>
+        <div className="chatbot-rec-meta">
+          <span className="rating">★ {recommendation.item_rating.toFixed(1)}</span>
+          <span>•</span>
+          <span>{recommendation.delivery_time_min} phút</span>
+        </div>
+        {recommendation.reasons && recommendation.reasons.length > 0 && (
+          <ul className="chatbot-rec-reasons">
+            {recommendation.reasons.slice(0, 2).map((reason, idx) => (
+              <li key={idx}>{reason}</li>
+            ))}
+          </ul>
+        )}
+        {hasLoadError && (
+          <p className="chatbot-rec-load-error">Chưa tải được chi tiết món.</p>
+        )}
+        <div className="chatbot-rec-actions">
+          <span className="price">{formatPrice(recommendation.effective_price)}</span>
+          <div className="buttons">
+            <button
+              type="button"
+              className="view-btn"
+              disabled={!item}
+              onClick={openItem}
+            >
+              {isLoadingItem ? "..." : "Xem"}
+            </button>
+            <button
+              type="button"
+              className="add-btn-small"
+              onClick={onAdd}
+            >
+              + Giỏ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

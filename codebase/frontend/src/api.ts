@@ -33,6 +33,50 @@ export type MenuResponse = {
   total: number;
 };
 
+export type MenuItemImage = {
+  id: string;
+  name: string;
+  shop_id: string;
+  base_price: number;
+  sale_price: number | null;
+  image_url: string;
+  image_source: string;
+  image_title: string | null;
+};
+
+export type RecommendationItem = {
+  item_id: string;
+  item_name: string;
+  shop_name: string;
+  category_name: string;
+  effective_price: number;
+  delivery_fee: number;
+  total_price: number;
+  delivery_time_min: number;
+  item_rating: number;
+  shop_rating: number;
+  spicy_level: number;
+  score: number;
+  reasons: string[];
+};
+
+export type ChatResponse = {
+  reply: string;
+  intent: {
+    budget: number | null;
+    max_delivery_min: number | null;
+    no_spicy: boolean;
+    lunch: boolean;
+    healthy: boolean;
+    light: boolean;
+    cheap: boolean;
+    unclear: boolean;
+  };
+  clarifying_question: string | null;
+  warnings: string[];
+  recommendations: RecommendationItem[];
+};
+
 export function resolveAssetUrl(path: string) {
   if (path.startsWith("http")) {
     return path;
@@ -50,6 +94,25 @@ export async function fetchMenuItems() {
   }
 
   return response.json() as Promise<MenuResponse>;
+}
+
+export async function fetchMenuItemImages(query?: string, limit = 20, offset = 0) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset)
+  });
+
+  if (query?.trim()) {
+    params.set("query", query.trim());
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/menu-items/images?${params}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch menu item images");
+  }
+
+  return response.json() as Promise<MenuItemImage[]>;
 }
 
 export async function sendChatMessage(message: string) {

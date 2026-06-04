@@ -3,8 +3,12 @@ import html
 from functools import lru_cache
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
+
+from app.services.food_image_tool import resolve_food_image
 
 router = APIRouter(prefix="/menu-items", tags=["menu"])
 
@@ -164,6 +168,18 @@ async def get_menu_item_image(item_id: str):
     item = next((item for item in load_menu_items() if item.id == item_id), None)
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
+
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        image = await resolve_food_image(
+            item_name=item.name,
+            existing_image_url=item.source_image_url,
+            client=client,
+        )
+
+    if image["image_url"]:
+        response = RedirectResponse(image["image_url"], status_code=307)
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     name = html.escape(item.name)
     category = html.escape(item.category_name)

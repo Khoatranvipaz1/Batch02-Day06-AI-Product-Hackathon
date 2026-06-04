@@ -28,6 +28,12 @@ class ChatbotParserTests(unittest.TestCase):
         self.assertIn("ăn tối", task["entities"]["include_tags"])
         self.assertEqual(next(iter(task["ranking"])), "avg_delivery_time_min")
 
+    def test_50k_does_not_negate_following_tag(self):
+        task = parse_user_query("Gợi ý món dưới 50k giao nhanh")
+
+        self.assertIn("giao nhanh", task["entities"]["include_tags"])
+        self.assertNotIn("exclude_tags", task["entities"])
+
     def test_group_vegetarian(self):
         task = parse_user_query("Tôi ăn chay, đặt cho nhóm 3 người")
 

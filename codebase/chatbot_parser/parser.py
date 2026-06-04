@@ -134,7 +134,6 @@ DEFAULT_RANKING = OrderedDict(
 NEGATION_WORDS = {
     "khong",
     "ko",
-    "k",
     "tranh",
     "dung",
     "dung co",

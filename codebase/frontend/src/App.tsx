@@ -31,6 +31,13 @@ type ChatMessage = {
   recommendations?: RecommendationItem[];
 };
 
+const GREETING_TEXT =
+  "Xin chào! Mình là Trợ lý AI ShopeeFood. Bạn cần mình gợi ý món ăn gì hôm nay? 😋\n\n" +
+  "Ví dụ:\n" +
+  "• 'Tìm món ăn trưa dưới 50k không cay'\n" +
+  "• 'Ăn gì tốt cho sức khỏe'\n" +
+  "• 'Gợi ý món gà rán giao nhanh dưới 30 phút'";
+
 function createGreetingMessage(): ChatMessage {
   return {
     id: "greeting",
@@ -448,7 +455,7 @@ export default function App() {
               <div key={msg.id} className={`chatbot-msg-row ${msg.sender}`}>
                 {msg.sender === "bot" && <span className="chatbot-msg-avatar">🤖</span>}
                 <div className="chatbot-msg-bubble">
-                  <div className="chatbot-msg-text">{msg.text}</div>
+                  <div className="chatbot-msg-text">{msg.id === "greeting" ? GREETING_TEXT : msg.text}</div>
                   
                   {msg.warnings && msg.warnings.length > 0 && (
                     <div className="chatbot-warnings">
